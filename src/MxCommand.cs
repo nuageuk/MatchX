@@ -9,6 +9,7 @@ namespace MatchX
     public class MxCommand
     {
         private static ObjectId _sourceId = ObjectId.Null;
+        private static Database? _sourceDatabase = null;
 
         [CommandMethod("MX")]
         public static void Mx()
@@ -26,8 +27,17 @@ namespace MatchX
                 if (per.Status != PromptStatus.OK) return;
 
                 _sourceId = per.ObjectId;
+                _sourceDatabase = db;
 
                 ed.WriteMessage("\nMatchX - source captured. Run MX again and select destination entities. Run MXRESET to pick a new source.");
+                return;
+            }
+
+            if (db != _sourceDatabase)
+            {
+                ed.WriteMessage("\nMatchX: source was captured in a different document — run MX to pick a new source.");
+                _sourceId = ObjectId.Null;
+                _sourceDatabase = null;
                 return;
             }
 
@@ -49,6 +59,7 @@ namespace MatchX
         public static void MxReset()
         {
             _sourceId = ObjectId.Null;
+            _sourceDatabase = null;
 
             Document doc = Application.DocumentManager.MdiActiveDocument;
             doc?.Editor.WriteMessage("\nMatchX - source cleared.");
