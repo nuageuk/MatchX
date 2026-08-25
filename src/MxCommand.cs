@@ -124,6 +124,7 @@ namespace MatchX
                     destination.Transparency = source.Transparency;
 
                     CopyThickness(source, destination);
+                    CopyTypeSpecificProperties(source, destination);
 
                     count++;
                 }
@@ -132,6 +133,43 @@ namespace MatchX
             }
 
             return (count, skippedLockedLayer);
+        }
+
+        private static void CopyTypeSpecificProperties(Entity source, Entity destination)
+        {
+            switch (destination)
+            {
+                case DBText destText when source is DBText srcText:
+                    destText.TextStyleId = srcText.TextStyleId;
+                    break;
+
+                case MText destMText when source is MText srcMText:
+                    destMText.TextStyleId = srcMText.TextStyleId;
+                    break;
+
+                case Dimension destDim when source is Dimension srcDim:
+                    destDim.DimensionStyleName = srcDim.DimensionStyleName;
+                    break;
+
+                case Hatch destHatch when source is Hatch srcHatch:
+                    destHatch.SetHatchPattern(srcHatch.PatternType, srcHatch.PatternName);
+                    destHatch.PatternScale = srcHatch.PatternScale;
+                    destHatch.PatternAngle = srcHatch.PatternAngle;
+                    destHatch.HatchStyle = srcHatch.HatchStyle;
+                    break;
+
+                case Polyline destPoly when source is Polyline srcPoly:
+                    destPoly.ConstantWidth = srcPoly.ConstantWidth;
+                    break;
+
+                case Polyline2d destPoly2d when source is Polyline2d srcPoly2d:
+                    destPoly2d.ConstantWidth = srcPoly2d.ConstantWidth;
+                    break;
+
+                case MLeader destMLeader when source is MLeader srcMLeader:
+                    destMLeader.MLeaderStyle = srcMLeader.MLeaderStyle;
+                    break;
+            }
         }
 
         private static void CopyThickness(Entity source, Entity destination)
