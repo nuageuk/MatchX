@@ -120,7 +120,7 @@ namespace MatchX
                     destination.Linetype = source.Linetype;
                     destination.LinetypeScale = source.LinetypeScale;
                     destination.LineWeight = source.LineWeight;
-                    destination.PlotStyleName = source.PlotStyleName;
+                    try { destination.PlotStyleName = source.PlotStyleName; } catch { /* CTB mode — skip */ }
                     destination.Transparency = source.Transparency;
 
                     CopyThickness(source, destination);
