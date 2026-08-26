@@ -30,7 +30,13 @@ namespace MatchX
                 _sourceId = per.ObjectId;
                 _sourceDatabase = db;
 
-                ed.WriteMessage("\nMatchX - source captured. Run MX again and select destination entities. Run MXRESET to pick a new source.");
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    Entity source = (Entity)tr.GetObject(_sourceId, OpenMode.ForRead);
+                    ed.WriteMessage($"\nMatchX: source captured — {source.GetType().Name.ToUpper()} on layer \"{source.Layer}\". Select destinations or run MX again.");
+                    tr.Commit();
+                }
+
                 return;
             }
 
