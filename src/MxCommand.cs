@@ -141,6 +141,8 @@ namespace MatchX
 
                             ed.WriteMessage($"\nMatchX: {count} entities updated");
                         }
+
+                        ed.Document.SendStringToExecute("\n", true, false, false);
                     }
 
                     tr.Commit();
