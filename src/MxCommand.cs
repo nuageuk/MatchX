@@ -88,60 +88,52 @@ namespace MatchX
 
                     while (true)
                     {
-                        PromptEntityOptions peo = new PromptEntityOptions("\nMatchX - select destination entity or [Enter to finish]: ")
+                        PromptSelectionOptions pso = new PromptSelectionOptions
                         {
-                            AllowNone = true
+                            MessageForAdding = "\nMatchX - select destination entities (click or window), or press Enter to finish: "
                         };
-                        PromptEntityResult per = ed.GetEntity(peo);
+                        PromptSelectionResult psr = ed.GetSelection(pso);
 
-                        if (per.Status == PromptStatus.Cancel || per.Status == PromptStatus.None) break;
-                        if (per.Status != PromptStatus.OK) continue;
+                        if (psr.Status == PromptStatus.Cancel || psr.Status == PromptStatus.Error) break;
+                        if (psr.Status != PromptStatus.OK) continue;
 
-                        ObjectId destinationId = per.ObjectId;
-                        ed.WriteMessage($"\nMatchX [diag]: picked {destinationId}");
-
-                        if (destinationId == sourceId)
+                        foreach (SelectedObject selectedObject in psr.Value)
                         {
-                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — is source");
-                            continue;
+                            ObjectId destinationId = selectedObject.ObjectId;
+
+                            if (destinationId == sourceId) continue;
+                            if (updatedIds.Contains(destinationId)) continue;
+
+                            Entity destination = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
+
+                            LayerTableRecord layer = (LayerTableRecord)tr.GetObject(destination.LayerId, OpenMode.ForRead);
+                            if (layer.IsLocked)
+                            {
+                                skippedLockedLayer++;
+                                continue;
+                            }
+
+                            destination.UpgradeOpen();
+
+                            destination.Color = source.Color;
+                            destination.Layer = source.Layer;
+                            destination.Linetype = source.Linetype;
+                            destination.LinetypeScale = source.LinetypeScale;
+                            destination.LineWeight = source.LineWeight;
+                            try { destination.PlotStyleName = source.PlotStyleName; } catch { /* CTB mode — skip */ }
+                            destination.Transparency = source.Transparency;
+
+                            CopyThickness(source, destination);
+                            CopyTypeSpecificProperties(source, destination);
+
+                            count++;
+                            updatedIds.Add(destinationId);
+
+                            Entity destinationForHighlight = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
+                            destinationForHighlight.Highlight();
+
+                            ed.WriteMessage($"\nMatchX: {count} entities updated");
                         }
-                        if (updatedIds.Contains(destinationId))
-                        {
-                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — already updated");
-                            continue;
-                        }
-
-                        Entity destination = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
-
-                        LayerTableRecord layer = (LayerTableRecord)tr.GetObject(destination.LayerId, OpenMode.ForRead);
-                        if (layer.IsLocked)
-                        {
-                            skippedLockedLayer++;
-                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — locked layer");
-                            continue;
-                        }
-
-                        destination.UpgradeOpen();
-
-                        destination.Color = source.Color;
-                        destination.Layer = source.Layer;
-                        destination.Linetype = source.Linetype;
-                        destination.LinetypeScale = source.LinetypeScale;
-                        destination.LineWeight = source.LineWeight;
-                        try { destination.PlotStyleName = source.PlotStyleName; } catch { /* CTB mode — skip */ }
-                        destination.Transparency = source.Transparency;
-
-                        CopyThickness(source, destination);
-                        CopyTypeSpecificProperties(source, destination);
-
-                        count++;
-                        updatedIds.Add(destinationId);
-
-                        Entity destinationForHighlight = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
-                        destinationForHighlight.Highlight();
-
-                        ed.WriteMessage($"\nMatchX [diag]: {destinationId} applied");
-                        ed.WriteMessage($"\nMatchX: {count} entities updated");
                     }
 
                     tr.Commit();
