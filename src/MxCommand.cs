@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -77,52 +78,90 @@ namespace MatchX
         {
             int count = 0;
             int skippedLockedLayer = 0;
+            HashSet<ObjectId> updatedIds = new HashSet<ObjectId>();
 
-            using (Transaction tr = db.TransactionManager.StartTransaction())
+            try
             {
-                Entity source = (Entity)tr.GetObject(sourceId, OpenMode.ForRead);
-
-                while (true)
+                using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
-                    PromptEntityOptions peo = new PromptEntityOptions("\nMatchX - select destination entity or [Enter to finish]: ")
+                    Entity source = (Entity)tr.GetObject(sourceId, OpenMode.ForRead);
+
+                    while (true)
                     {
-                        AllowNone = true
-                    };
-                    PromptEntityResult per = ed.GetEntity(peo);
+                        PromptEntityOptions peo = new PromptEntityOptions("\nMatchX - select destination entity or [Enter to finish]: ")
+                        {
+                            AllowNone = true
+                        };
+                        PromptEntityResult per = ed.GetEntity(peo);
 
-                    if (per.Status == PromptStatus.Cancel || per.Status == PromptStatus.None) break;
-                    if (per.Status != PromptStatus.OK) continue;
+                        if (per.Status == PromptStatus.Cancel || per.Status == PromptStatus.None) break;
+                        if (per.Status != PromptStatus.OK) continue;
 
-                    ObjectId destinationId = per.ObjectId;
-                    if (destinationId == sourceId) continue;
+                        ObjectId destinationId = per.ObjectId;
+                        ed.WriteMessage($"\nMatchX [diag]: picked {destinationId}");
 
-                    Entity destination = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
+                        if (destinationId == sourceId)
+                        {
+                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — is source");
+                            continue;
+                        }
+                        if (updatedIds.Contains(destinationId))
+                        {
+                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — already updated");
+                            continue;
+                        }
 
-                    LayerTableRecord layer = (LayerTableRecord)tr.GetObject(destination.LayerId, OpenMode.ForRead);
-                    if (layer.IsLocked)
-                    {
-                        skippedLockedLayer++;
-                        ed.WriteMessage("\nMatchX: entity skipped — locked layer.");
-                        continue;
+                        Entity destination = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
+
+                        LayerTableRecord layer = (LayerTableRecord)tr.GetObject(destination.LayerId, OpenMode.ForRead);
+                        if (layer.IsLocked)
+                        {
+                            skippedLockedLayer++;
+                            ed.WriteMessage($"\nMatchX [diag]: {destinationId} skipped — locked layer");
+                            continue;
+                        }
+
+                        destination.UpgradeOpen();
+
+                        destination.Color = source.Color;
+                        destination.Layer = source.Layer;
+                        destination.Linetype = source.Linetype;
+                        destination.LinetypeScale = source.LinetypeScale;
+                        destination.LineWeight = source.LineWeight;
+                        try { destination.PlotStyleName = source.PlotStyleName; } catch { /* CTB mode — skip */ }
+                        destination.Transparency = source.Transparency;
+
+                        CopyThickness(source, destination);
+                        CopyTypeSpecificProperties(source, destination);
+
+                        count++;
+                        updatedIds.Add(destinationId);
+
+                        Entity destinationForHighlight = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
+                        destinationForHighlight.Highlight();
+
+                        ed.WriteMessage($"\nMatchX [diag]: {destinationId} applied");
+                        ed.WriteMessage($"\nMatchX: {count} entities updated");
                     }
 
-                    destination.UpgradeOpen();
-
-                    destination.Color = source.Color;
-                    destination.Layer = source.Layer;
-                    destination.Linetype = source.Linetype;
-                    destination.LinetypeScale = source.LinetypeScale;
-                    destination.LineWeight = source.LineWeight;
-                    try { destination.PlotStyleName = source.PlotStyleName; } catch { /* CTB mode — skip */ }
-                    destination.Transparency = source.Transparency;
-
-                    CopyThickness(source, destination);
-                    CopyTypeSpecificProperties(source, destination);
-
-                    count++;
+                    tr.Commit();
                 }
-
-                tr.Commit();
+            }
+            finally
+            {
+                if (updatedIds.Count > 0)
+                {
+                    using (Transaction tr = db.TransactionManager.StartTransaction())
+                    {
+                        foreach (ObjectId id in updatedIds)
+                        {
+                            if (!id.IsValid || id.IsErased) continue;
+                            Entity entity = (Entity)tr.GetObject(id, OpenMode.ForRead);
+                            entity.Unhighlight();
+                        }
+                        tr.Commit();
+                    }
+                }
             }
 
             return (count, skippedLockedLayer);
