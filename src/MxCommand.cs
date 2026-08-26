@@ -72,6 +72,15 @@ namespace MatchX
             }
         }
 
+        internal static void ClearSourceIfDocument(Database database)
+        {
+            if (_sourceDatabase != database) return;
+
+            _sourceId = ObjectId.Null;
+            _sourceDatabase = null;
+            _capturedProperties = null;
+        }
+
         [CommandMethod("MXRESET")]
         public static void MxReset()
         {

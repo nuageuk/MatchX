@@ -11,10 +11,17 @@ namespace MatchX
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             doc?.Editor.WriteMessage("\nMatchX loaded. Run MX to begin.");
+
+            Application.DocumentManager.DocumentToBeDestroyed += OnDocumentToBeDestroyed;
         }
 
         public void Terminate()
         {
+        }
+
+        private static void OnDocumentToBeDestroyed(object sender, DocumentCollectionEventArgs e)
+        {
+            MxCommand.ClearSourceIfDocument(e.Document.Database);
         }
     }
 }
