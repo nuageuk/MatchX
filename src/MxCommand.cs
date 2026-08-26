@@ -55,26 +55,8 @@ namespace MatchX
                 return;
             }
 
-            PromptSelectionOptions pso = new PromptSelectionOptions
-            {
-                MessageForAdding = "\nMatchX - select destination entities: "
-            };
-            PromptSelectionResult psr = ed.GetSelection(pso);
-            if (psr.Status != PromptStatus.OK)
-            {
-                ed.WriteMessage("\nMatchX: no destination entities selected.");
-                return;
-            }
-
-            ObjectId[] destinationIds = psr.Value.GetObjectIds();
-            if (destinationIds.Length == 0)
-            {
-                ed.WriteMessage("\nMatchX: no destination entities selected.");
-                return;
-            }
-
-            (int count, int skippedLockedLayer) = ApplyProperties(db, _sourceId, destinationIds);
-            ed.WriteMessage($"\nMatchX - properties applied to {count} entity(ies).");
+            (int count, int skippedLockedLayer) = PaintDestinations(ed, db, _sourceId);
+            ed.WriteMessage($"\nMatchX: {count} entities updated");
             if (skippedLockedLayer > 0)
             {
                 ed.WriteMessage($"\nMatchX: {skippedLockedLayer} entity(ies) skipped — locked layer.");
@@ -91,7 +73,7 @@ namespace MatchX
             doc?.Editor.WriteMessage("\nMatchX - source cleared.");
         }
 
-        private static (int count, int skippedLockedLayer) ApplyProperties(Database db, ObjectId sourceId, ObjectId[] destinationIds)
+        private static (int count, int skippedLockedLayer) PaintDestinations(Editor ed, Database db, ObjectId sourceId)
         {
             int count = 0;
             int skippedLockedLayer = 0;
@@ -100,8 +82,18 @@ namespace MatchX
             {
                 Entity source = (Entity)tr.GetObject(sourceId, OpenMode.ForRead);
 
-                foreach (ObjectId destinationId in destinationIds)
+                while (true)
                 {
+                    PromptEntityOptions peo = new PromptEntityOptions("\nMatchX - select destination entity or [Enter to finish]: ")
+                    {
+                        AllowNone = true
+                    };
+                    PromptEntityResult per = ed.GetEntity(peo);
+
+                    if (per.Status == PromptStatus.Cancel || per.Status == PromptStatus.None) break;
+                    if (per.Status != PromptStatus.OK) continue;
+
+                    ObjectId destinationId = per.ObjectId;
                     if (destinationId == sourceId) continue;
 
                     Entity destination = (Entity)tr.GetObject(destinationId, OpenMode.ForRead);
@@ -110,6 +102,7 @@ namespace MatchX
                     if (layer.IsLocked)
                     {
                         skippedLockedLayer++;
+                        ed.WriteMessage("\nMatchX: entity skipped — locked layer.");
                         continue;
                     }
 
