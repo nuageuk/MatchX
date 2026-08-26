@@ -102,6 +102,7 @@ namespace MatchX
 
                         if (psr.Status == PromptStatus.Cancel || psr.Status == PromptStatus.Error) break;
                         if (psr.Status != PromptStatus.OK) continue;
+                        if (psr.Value == null || psr.Value.Count == 0) break;
 
                         foreach (SelectedObject selectedObject in psr.Value)
                         {
