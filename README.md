@@ -9,13 +9,20 @@
 <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=flat&logo=dotnet&logoColor=white" />
 <img src="https://img.shields.io/badge/License-MIT-green?style=flat" />
 
+<br/>
+<br/>
+
+*MATCHPROP without boundaries.*
+
 </div>
 
 ---
 
 ## What is it?
 
-MatchX is a free AutoCAD plugin that extends `MATCHPROP` — match entity properties across layouts, between model space and paper space, with a live paint mode. Native `MATCHPROP` requires the source and destination to live in the same space; MatchX removes that limitation entirely.
+MatchX is a free AutoCAD plugin that extends `MATCHPROP`. Match entity properties across layouts, between model space and paper space, with a live paint mode. Native `MATCHPROP` requires the source and destination to live in the same space.
+
+Autodesk's [official workaround](https://www.autodesk.com/support/technical/article/caas/sfdcarticles/sfdcarticles/MATCHPROP-can-t-be-used-for-objects-on-different-layouts-in-on-DWG-in-AutoCAD-products.html) requires manually copying the source object, switching layouts, pasting, running `MATCHPROP`, then deleting the copy. MatchX handles this automatically.
 
 ---
 
@@ -25,17 +32,17 @@ MatchX is a free AutoCAD plugin that extends `MATCHPROP` — match entity proper
 |---|---|
 | `MX` | Pick a source entity, then select destinations by click or window. Enter to finish. |
 | `MXRESET` | Clear the captured source and pick a new one. |
-| `MXLIST` | Print the currently captured source — entity type, layer, and all captured properties. |
+| `MXLIST` | Print the currently captured source: entity type, layer, and all captured properties. |
 
 ---
 
 ## Features
 
 - Cross-layout and Model ↔ Paper Space property matching
-- Paint mode — click or drag a window to select destinations, Enter to finish
+- Paint mode: click or drag a window to select destinations, Enter to finish
 - Live count as properties are applied
 - Visual highlight on matched entities
-- Deduplication — picking the same entity twice in a session is a no-op
+- Deduplication: picking the same entity twice in a session is a no-op
 - Source auto-clears when its document is closed
 - Single undo step per paint session
 
@@ -61,8 +68,9 @@ MatchX is a free AutoCAD plugin that extends `MATCHPROP` — match entity proper
 
 Requires AutoCAD 2025 installed at `C:\Program Files\Autodesk\AutoCAD 2025\` and the .NET 8 SDK.
 
+```bash
 dotnet build MatchX.csproj
-
+```
 
 Output: `bin\Debug\net8.0-windows\MatchX.dll`
 
@@ -83,9 +91,9 @@ Output: `bin\Debug\net8.0-windows\MatchX.dll`
 - [x] Paint mode with click and window selection
 - [x] Live count and entity highlighting
 - [x] Deduplication
-- [x] MXLIST — inspect captured source
+- [x] MXLIST: inspect captured source
 - [x] Auto-clear on document close
-- [ ] MXS settings — toggle which properties transfer
+- [ ] MXS settings: toggle which properties transfer
 - [ ] Cross-drawing support
 - [ ] Persistent settings
 - [ ] Autodesk App Store listing
