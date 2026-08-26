@@ -33,10 +33,20 @@ namespace MatchX
 
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
-                    Entity source = (Entity)tr.GetObject(_sourceId, OpenMode.ForRead);
-                    _capturedProperties = CaptureProperties(source);
-                    ed.WriteMessage($"\nMatchX: source captured — {source.GetType().Name.ToUpper()} on layer \"{source.Layer}\". Select destinations or run MX again.");
-                    tr.Commit();
+                    try
+                    {
+                        Entity source = (Entity)tr.GetObject(_sourceId, OpenMode.ForRead);
+                        _capturedProperties = CaptureProperties(source);
+                        ed.WriteMessage($"\nMatchX: source captured — {source.GetType().Name.ToUpper()} on layer \"{source.Layer}\". Select destinations or run MX again.");
+                        tr.Commit();
+                    }
+                    catch (System.Exception)
+                    {
+                        ed.WriteMessage("\nMatchX: entity no longer valid — run MX to pick a new source.");
+                        _sourceId = ObjectId.Null;
+                        _sourceDatabase = null;
+                        _capturedProperties = null;
+                    }
                 }
 
                 return;
@@ -255,6 +265,13 @@ namespace MatchX
 
                     tr.Commit();
                 }
+            }
+            catch (System.Exception)
+            {
+                ed.WriteMessage("\nMatchX: entity no longer valid — run MX to pick a new source.");
+                _sourceId = ObjectId.Null;
+                _sourceDatabase = null;
+                _capturedProperties = null;
             }
             finally
             {
