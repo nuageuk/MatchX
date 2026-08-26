@@ -99,10 +99,17 @@ namespace MatchX
             if (doc == null) return;
 
             Editor ed = doc.Editor;
+            Database db = doc.Database;
 
             if (_sourceId.IsNull || !_sourceId.IsValid || _sourceId.IsErased)
             {
                 ed.WriteMessage("\nMatchX: no source captured — run MX to pick one.");
+                return;
+            }
+
+            if (db != _sourceDatabase)
+            {
+                ed.WriteMessage("\nMatchX: source was captured in a different document — run MX to pick a new source.");
                 return;
             }
 
