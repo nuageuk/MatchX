@@ -11,6 +11,7 @@ namespace MatchX
     {
         private static ObjectId _sourceId = ObjectId.Null;
         private static Database? _sourceDatabase = null;
+        private static Dictionary<string, object> _capturedProperties = null;
 
         [CommandMethod("MX")]
         public static void Mx()
@@ -33,6 +34,7 @@ namespace MatchX
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     Entity source = (Entity)tr.GetObject(_sourceId, OpenMode.ForRead);
+                    _capturedProperties = CaptureProperties(source);
                     ed.WriteMessage($"\nMatchX: source captured — {source.GetType().Name.ToUpper()} on layer \"{source.Layer}\". Select destinations or run MX again.");
                     tr.Commit();
                 }
@@ -75,9 +77,99 @@ namespace MatchX
         {
             _sourceId = ObjectId.Null;
             _sourceDatabase = null;
+            _capturedProperties = null;
 
             Document doc = Application.DocumentManager.MdiActiveDocument;
             doc?.Editor.WriteMessage("\nMatchX - source cleared.");
+        }
+
+        [CommandMethod("MXLIST")]
+        public static void MxList()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            Editor ed = doc.Editor;
+
+            if (_sourceId.IsNull || !_sourceId.IsValid || _sourceId.IsErased)
+            {
+                ed.WriteMessage("\nMatchX: no source captured — run MX to pick one.");
+                return;
+            }
+
+            using (Transaction tr = _sourceDatabase.TransactionManager.StartTransaction())
+            {
+                Entity source = (Entity)tr.GetObject(_sourceId, OpenMode.ForRead);
+                ed.WriteMessage($"\nMatchX source: {source.GetType().Name.ToUpper()} on layer \"{source.Layer}\"");
+
+                if (_capturedProperties != null)
+                {
+                    foreach (KeyValuePair<string, object> property in _capturedProperties)
+                    {
+                        ed.WriteMessage($"\nMatchX:   {property.Key} = {property.Value}");
+                    }
+                }
+
+                tr.Commit();
+            }
+        }
+
+        private static Dictionary<string, object> CaptureProperties(Entity source)
+        {
+            Dictionary<string, object> properties = new Dictionary<string, object>
+            {
+                ["Color"] = source.Color,
+                ["Layer"] = source.Layer,
+                ["Linetype"] = source.Linetype,
+                ["LinetypeScale"] = source.LinetypeScale,
+                ["LineWeight"] = source.LineWeight,
+                ["Transparency"] = source.Transparency
+            };
+
+            try { properties["PlotStyleName"] = source.PlotStyleName; } catch { /* CTB mode — skip */ }
+
+            PropertyInfo thicknessProperty = source.GetType().GetProperty("Thickness");
+            if (thicknessProperty != null)
+            {
+                properties["Thickness"] = thicknessProperty.GetValue(source, null);
+            }
+
+            switch (source)
+            {
+                case DBText srcText:
+                    properties["TextStyleId"] = srcText.TextStyleId;
+                    break;
+
+                case MText srcMText:
+                    properties["TextStyleId"] = srcMText.TextStyleId;
+                    break;
+
+                case Dimension srcDim:
+                    properties["DimensionStyleName"] = srcDim.DimensionStyleName;
+                    break;
+
+                case Hatch srcHatch:
+                    properties["PatternType"] = srcHatch.PatternType;
+                    properties["PatternName"] = srcHatch.PatternName;
+                    properties["PatternScale"] = srcHatch.PatternScale;
+                    properties["PatternAngle"] = srcHatch.PatternAngle;
+                    properties["HatchStyle"] = srcHatch.HatchStyle;
+                    break;
+
+                case Polyline srcPoly:
+                    properties["ConstantWidth"] = srcPoly.ConstantWidth;
+                    break;
+
+                case Polyline2d srcPoly2d:
+                    properties["ConstantWidth"] = srcPoly2d.ConstantWidth;
+                    break;
+
+                case MLeader srcMLeader:
+                    properties["MLeaderStyle"] = srcMLeader.MLeaderStyle;
+                    break;
+            }
+
+            return properties;
         }
 
         private static (int count, int skippedLockedLayer) PaintDestinations(Editor ed, Database db, ObjectId sourceId)
